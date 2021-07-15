@@ -204,18 +204,15 @@ func (d *nodeService) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	// This operation (NodeStageVolume) MUST be idempotent.
 	// If the volume corresponding to the volume_id is already staged to the staging_target_path,
 	// and is identical to the specified volume_capability the Plugin MUST reply 0 OK.
-	if device == source {
+	dmSource := fmt.Sprintf("/dev/mapper/%s", volumeID)
+	if device == dmSource {
 		klog.V(4).Infof("NodeStageVolume: volume=%q already staged", volumeID)
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
 	// Add encryption layer
-	if _, err := os.Stat(fmt.Sprintf("/dev/mapper/%s", volumeID)); os.IsNotExist(err) {
+	if _, err := os.Stat(dmSource); os.IsNotExist(err) {
 		klog.V(4).Infof("NodeStageVolume: adding encryption for %s", volumeID)
-
-		for k, v := range req.Secrets {
-			klog.V(4).Infof("%s - %s", k, v)
-		}
 
 		key, ok := req.Secrets[keySecretName]
 		if !ok {
@@ -235,27 +232,27 @@ func (d *nodeService) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 			return nil, status.Errorf(codes.Internal, "Could not open the encrypted device: %v - %q", err, bufStderr.String())
 		}
 	} else if err != nil {
-		return nil, status.Errorf(codes.Internal, "Could not determine if device mapper %q exists", fmt.Sprintf("/dev/mapper/%s", volumeID))
+		return nil, status.Errorf(codes.Internal, "Could not determine if device mapper %q exists", dmSource)
 	}
 
 	// FormatAndMount will format only if needed
-	klog.V(4).Infof("NodeStageVolume: formatting %s and mounting at %s with fstype %s", source, target, fsType)
-	err = d.mounter.FormatAndMount(fmt.Sprintf("/dev/mapper/%s", volumeID), target, fsType, mountOptions)
+	klog.V(4).Infof("NodeStageVolume: formatting %s and mounting at %s with fstype %s", dmSource, target, fsType)
+	err = d.mounter.FormatAndMount(dmSource, target, fsType, mountOptions)
 	if err != nil {
-		msg := fmt.Sprintf("could not format %q and mount it at %q: %v", source, target, err)
+		msg := fmt.Sprintf("could not format %q and mount it at %q: %v", dmSource, target, err)
 		return nil, status.Error(codes.Internal, msg)
 	}
 	//TODO: use the common function from vendor pkg kubernetes/mount-util
 
-	needResize, err := d.mounter.NeedResize(source, target)
+	needResize, err := d.mounter.NeedResize(dmSource, target)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Could not determine if volume %q (%q) need to be resized:  %v", req.GetVolumeId(), source, err)
+		return nil, status.Errorf(codes.Internal, "Could not determine if volume %q (%q) need to be resized:  %v", req.GetVolumeId(), dmSource, err)
 	}
 	if needResize {
 		r := mountutils.NewResizeFs(d.mounter.(*NodeMounter).Exec)
-		klog.V(2).Infof("Volume %s needs resizing", source)
-		if _, err := r.Resize(source, target); err != nil {
-			return nil, status.Errorf(codes.Internal, "Could not resize volume %q (%q):  %v", volumeID, source, err)
+		klog.V(2).Infof("Volume %s needs resizing", dmSource)
+		if _, err := r.Resize(dmSource, target); err != nil {
+			return nil, status.Errorf(codes.Internal, "Could not resize volume %q (%q):  %v", volumeID, dmSource, err)
 		}
 	}
 	return &csi.NodeStageVolumeResponse{}, nil
@@ -312,7 +309,7 @@ func (d *nodeService) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		klog.V(4).Infof("NodeUnstageVolume: closing dm-crypt")
 
 		bufStderr := &bytes.Buffer{}
-		cmd := exec.CommandContext(ctx, "cryptsetup", strings.Split(fmt.Sprintf("close %s", req.GetVolumeId()), " ")...)
+		cmd := exec.CommandContext(ctx, "cryptsetup", strings.Split(fmt.Sprintf("close %s", volumeID), " ")...)
 		cmd.Stdout = nil
 		cmd.Stderr = bufStderr
 
