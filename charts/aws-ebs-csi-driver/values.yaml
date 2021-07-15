@@ -73,7 +73,7 @@ controller:
   httpEndpoint:
   # ID of the Kubernetes cluster used for tagging provisioned EBS volumes (optional).
   k8sTagClusterId:
-  logLevel: 4
+  logLevel: 7
   nodeSelector: {}
   podAnnotations: {}
   podLabels: {}
@@ -118,7 +118,7 @@ controller:
 node:
   env: []
   kubeletPath: /var/lib/kubelet
-  logLevel: 4
+  logLevel: 7
   priorityClassName:
   nodeSelector: {}
   podAnnotations: {}
