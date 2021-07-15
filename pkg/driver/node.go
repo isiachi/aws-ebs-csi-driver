@@ -17,7 +17,6 @@ limitations under the License.
 package driver
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -222,8 +221,8 @@ func (d *nodeService) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		bufStderr := &bytes.Buffer{}
 		cmd := exec.CommandContext(ctx, "cryptsetup", strings.Split(fmt.Sprintf("--allow-discards --cipher %s --key-file - --key-size=256 --type plain open %s %s", dmCryptCipher, source, volumeID), " ")...)
 		cmd.Stdin = bytes.NewReader([]byte(key))
-		cmd.Stdout = os.DevNull
-		cmd.Stderr = bufio.NewWriter(bufStderr)
+		cmd.Stdout = nil
+		cmd.Stderr = bufStderr
 
 		err := cmd.Run()
 		if err != nil {
@@ -308,8 +307,8 @@ func (d *nodeService) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 
 		bufStderr := &bytes.Buffer{}
 		cmd := exec.CommandContext(ctx, "cryptsetup", strings.Split(fmt.Sprintf("close %s", req.GetVolumeId()), " ")...)
-		cmd.Stdout = os.DevNull
-		cmd.Stderr = bufio.NewWriter(bufStderr)
+		cmd.Stdout = nil
+		cmd.Stderr = bufStderr
 
 		err := cmd.Run()
 		if err != nil {
