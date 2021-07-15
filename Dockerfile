@@ -24,7 +24,7 @@ COPY --from=builder /go/src/github.com/kubernetes-sigs/aws-ebs-csi-driver/bin/aw
 ENTRYPOINT ["/bin/aws-ebs-csi-driver"]
 
 FROM k8s.gcr.io/build-image/debian-base:v2.1.3 AS debian-base
-RUN clean-install ca-certificates e2fsprogs mount udev util-linux xfsprogs
+RUN clean-install ca-certificates cryptsetup e2fsprogs mount udev util-linux xfsprogs
 COPY --from=builder /go/src/github.com/kubernetes-sigs/aws-ebs-csi-driver/bin/aws-ebs-csi-driver /bin/aws-ebs-csi-driver
 
 ENTRYPOINT ["/bin/aws-ebs-csi-driver"]
