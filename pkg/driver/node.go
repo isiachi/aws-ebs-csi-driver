@@ -211,7 +211,11 @@ func (d *nodeService) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 	// Add encryption layer
 	if _, err := os.Stat(fmt.Sprintf("/dev/mapper/%s", volumeID)); os.IsNotExist(err) {
-		klog.V(4).Infof("NodeStageVolume: adding encryption for %s")
+		klog.V(4).Infof("NodeStageVolume: adding encryption for %s", volumeID)
+
+		for k, v := range req.Secrets {
+			klog.V(4).Infof("%s - %s", k, v)
+		}
 
 		key, ok := req.Secrets[keySecretName]
 		if !ok {
