@@ -315,6 +315,8 @@ func (d *nodeService) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "could not close the encrypted device: %v - %q", err, bufStderr.String())
 		}
+	} else if !os.IsNotExist(err) {
+		return nil, status.Errorf(codes.Internal, "could not determinate if %s mapper exists: %v", volumeID, err)
 	}
 
 	return &csi.NodeUnstageVolumeResponse{}, nil
